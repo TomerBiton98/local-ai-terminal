@@ -15,6 +15,10 @@ Runs fully offline — no API keys, no cloud, no data leaving your machine.
 
 ---
 
+https://github.com/user-attachments/assets/dcfbadcc-cfd7-41e8-b10f-14da578513bc
+
+
+
 ## 🏗 Architecture
 
 ```
