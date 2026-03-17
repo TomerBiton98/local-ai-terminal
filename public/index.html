@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kado Companion v23</title>
+  <style>
+    :root {
+      --bg: #080808; --surface: #121212; --border: #222;
+      --accent: #5effad; --text: #d1d1d1; --text-dim: #444;
+      --font: 'ui-monospace', 'Cascadia Code', Menlo, monospace;
+    }
+
+    body.coder-mode { --accent: #ff4d4d; }
+
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font);
+      margin: 0; display: flex; flex-direction: column; height: 100vh; padding: 10px 20px; overflow: hidden;
+      transition: background 0.3s;
+    }
+
+    #output {
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+      padding-bottom: 20px; mask-image: linear-gradient(to bottom, transparent, black 5%);
+    }
+
+    .entry { line-height: 1; max-width: 100%; font-size: 13px; animation: fadeIn 0.1s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+    .label { font-size: 8px; color: var(--text-dim); font-weight: bold; text-transform: uppercase; margin-bottom: 1px;}
+    .content { white-space: pre-wrap; padding-left: 2px; line-height: 1.2; }
+    .user-content { color: var(--accent); }
+
+    #interaction-zone {
+      display: flex; align-items: flex-end; gap: 15px;
+      border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 10px;
+    }
+
+    #kado-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 160px; height: 120px; justify-content: flex-end;}
+    
+    #kado-big {
+      color: var(--accent); font-size: 18px; line-height: 1.1; white-space: pre;
+      margin: 0; cursor: pointer; filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.05));
+      user-select: none; transition: 0.1s; z-index: 2;
+    }
+
+    /* ANIMATIONS */
+    .vibrate { animation: shake 0.1s infinite; }
+    @keyframes shake { 0%, 100% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } }
+    
+    .toss { animation: toss-ball 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+    @keyframes toss-ball { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-50px) rotate(15deg); } }
+
+    .gaming { animation: focus-game 0.2s infinite alternate; }
+    @keyframes focus-game { from { transform: translateX(-2px); } to { transform: translateX(2px); } }
+
+    .tickle-squish { animation: squish 0.3s ease; }
+    @keyframes squish { 
+      0% { transform: scale(1); } 
+      30% { transform: scale(0.8, 1.2) rotate(5deg); } 
+      100% { transform: scale(1); } 
+    }
+
+    #kado-bubble {
+      position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #000;
+      padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800;
+      display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10;
+      max-width: 140px; text-align: center; pointer-events: none;
+    }
+    #kado-bubble::after {
+      content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+      border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid var(--accent);
+    }
+
+    .item-btn { font-size: 14px; background: #1a1a1a; border: 1px solid #333; cursor: pointer; border-radius: 5px; padding: 4px; transition: 0.1s; }
+    .item-btn:hover { border-color: var(--accent); }
+    
+    .play-btn {
+      position: absolute; bottom: 45px; right: -10px;
+      background: var(--accent); color: black; border: none; font-size: 7px; font-weight: bold;
+      padding: 2px 5px; border-radius: 4px; cursor: pointer; z-index: 5;
+      animation: fadeIn 0.3s;
+    }
+
+    .toggle-wrap { display: flex; background: #1a1a1a; border-radius: 4px; padding: 2px; gap: 2px; }
+    .toggle-btn { font-size: 8px; border: none; background: transparent; color: #555; padding: 2px 6px; cursor: pointer; border-radius: 2px; font-weight: bold; }
+    .toggle-btn.active { background: var(--accent); color: black; }
+  </style>
+</head>
+<body id="main-body">
+
+<div id="output"></div>
+
+<div id="interaction-zone">
+  <div id="kado-wrapper">
+    <div id="kado-bubble">!</div>
+    <button id="play-action" class="play-btn" style="display:none;" onclick="triggerPlay()">USE ITEM</button>
+    <pre id="kado-big" onclick="handleTickle()"></pre>
+    <div id="inventory" style="display:flex; gap:5px; margin-top:8px;">
+      <button class="item-btn" onclick="changeItem('🍃')">🍃</button>
+      <button class="item-btn" onclick="changeItem('☕')">☕</button>
+      <button class="item-btn" onclick="changeItem('🏈')">🏈</button>
+      <button class="item-btn" onclick="changeItem('🕹️')">🕹️</button>
+    </div>
+  </div>
+
+  <div class="input-box" style="flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <span id="sys-status" style="font-size:8px; color:var(--text-dim);">V23 // ACTIVE_LISTENER</span>
+      <div class="toggle-wrap">
+        <button id="btn-phi3" class="toggle-btn active" onclick="setMode('phi3')">FAST</button>
+        <button id="btn-deep" class="toggle-btn" onclick="setMode('deepseek-coder')">CODER</button>
+      </div>
+    </div>
+    <input id="user-input" placeholder="Type or click Kado..." autofocus autocomplete="off" style="width:100%; background:transparent; border:none; color:white; font-family:inherit; outline:none; font-size:14px;">
+  </div>
+</div>
+
+<script>
+  const output = document.getElementById('output');
+  const input = document.getElementById('user-input');
+  const kado = document.getElementById('kado-big');
+  const bubble = document.getElementById('kado-bubble');
+  const playBtn = document.getElementById('play-action');
+  const body = document.getElementById('main-body');
+
+  let currentItem = "🍃";
+  let currentModel = "phi3"; 
+  let lastAction = Date.now();
+  let coffeeCount = 0;
+  let isDead = false;
+  let typingTimer;
+
+  const MOODS = {
+    idle: () => ` {\\_/}\n (•.•)\n / >${currentItem}`,
+    happy: () => ` {\\_/}\n (•◡•)\n / >${currentItem}`,
+    zoom: () => ` {\\_/}\n (◕0◕)\n / >☕!!`,
+    gamer: () => ` {\\_/}\n ( •̀ - •́)\n / >🕹️`,
+    dead: () => ` {\\_/}\n ( x_x)\n / >💀`,
+    think: () => ` {\\_/}\n ( -.-)\n / >⚙️`,
+    writing: () => ` {\\_/}\n (◕_◕)\n / >🖊️`,
+    love: () => ` {\\_/}\n (๑˃ᴗ˂)\n / >❤️`,
+    scared: () => ` {\\_/}\n ( >_<)\n / >❕`
+  };
+
+  function setMode(mode) {
+    currentModel = mode;
+    document.getElementById('btn-phi3').classList.toggle('active', mode === 'phi3');
+    document.getElementById('btn-deep').classList.toggle('active', mode === 'deepseek-coder');
+    body.classList.toggle('coder-mode', mode === 'deepseek-coder');
+    markAction();
+  }
+
+  function updateDisplay(mood = 'idle') {
+    kado.textContent = MOODS[mood] ? MOODS[mood]() : MOODS.idle();
+    kado.style.opacity = isDead ? "0.3" : "1";
+  }
+
+  function markAction() { lastAction = Date.now(); }
+
+  function showBubble(text, time = 2000) {
+    bubble.textContent = text;
+    bubble.style.display = "block";
+    setTimeout(() => bubble.style.display = "none", time);
+  }
+
+  function changeItem(item) {
+    if(isDead) return;
+    currentItem = item;
+    playBtn.style.display = (item === '🍃') ? 'none' : 'block';
+    updateDisplay(item === '🕹️' ? 'gamer' : 'happy');
+    markAction();
+  }
+
+  function triggerPlay() {
+    if(isDead) return;
+    markAction();
+    if(currentItem === '☕') {
+      coffeeCount++;
+      if(coffeeCount >= 3) {
+          isDead = true; updateDisplay('dead'); showBubble("OVERHEAT");
+          setTimeout(() => { isDead = false; coffeeCount = 0; updateDisplay('idle'); }, 15000);
+          return;
+      }
+      kado.classList.add('vibrate'); updateDisplay('zoom'); showBubble("ZOOMIES!");
+      setTimeout(() => { kado.classList.remove('vibrate'); updateDisplay('idle'); }, 1500);
+    } else if(currentItem === '🏈') {
+      kado.classList.add('toss'); showBubble("YEET!");
+      setTimeout(() => kado.classList.remove('toss'), 700);
+    } else if(currentItem === '🕹️') {
+      kado.classList.add('gaming'); showBubble("CLUTCHING");
+      setTimeout(() => { kado.classList.remove('gaming'); updateDisplay('gamer'); }, 2000);
+    }
+  }
+
+  function handleTickle() {
+    if(isDead) return;
+    markAction();
+    kado.classList.add('tickle-squish');
+    updateDisplay('happy');
+    showBubble(["HEHE!", "STOP!", "TICKLISH!", "GIGGLE.EXE"][Math.floor(Math.random()*4)]);
+    setTimeout(() => { kado.classList.remove('tickle-squish'); updateDisplay('idle'); }, 300);
+  }
+
+  async function sendMessage() {
+    if(isDead) return;
+    const text = input.value.trim();
+    if(!text) return;
+
+    
+    const lowText = text.toLowerCase();
+    if(lowText.includes("coffee")) { showBubble("WANT!!"); updateDisplay('zoom'); }
+    else if(lowText.includes("love") || lowText.includes("heart")) { showBubble("AWW!"); updateDisplay('love'); }
+    else if(lowText.includes("bug") || lowText.includes("error") || lowText.includes("delete")) { showBubble("OH NO!"); updateDisplay('scared'); }
+    else { updateDisplay('think'); }
+
+    output.innerHTML += `<div class="entry"><div class="label">YOU</div><div class="content user-content">${text}</div></div>`;
+    input.value = "";
+    markAction();
+
+    try {
+      const endpoint = currentModel.includes('deepseek') ? "http://localhost:11434/api/generate" : "/api/chat";
+      const res = await fetch(endpoint, { 
+        method: "POST", headers: {"Content-Type": "application/json"}, 
+        body: JSON.stringify({ prompt: text, model: currentModel, stream: false }) 
+      });
+      const data = await res.json();
+      const reply = data.response || data.content || "My brain is fuzzy.";
+      output.innerHTML += `<div class="entry"><div class="label">KADO</div><div class="content">${reply}</div></div>`;
+      updateDisplay('happy');
+    } catch(e) {
+      output.innerHTML += `<div class="entry" style="color:var(--accent); opacity:0.6;"><div class="label">SYS</div><div class="content">[NO_RESPONSE] Is Ollama running?</div></div>`;
+      setTimeout(() => updateDisplay('idle'), 1000);
+    }
+    output.scrollTop = output.scrollHeight;
+  }
+
+  input.addEventListener('input', () => {
+    if(isDead) return;
+    markAction();
+    updateDisplay('writing');
+
+
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+        if(input.value.length === 0) updateDisplay('idle');
+    }, 1000);
+  });
+
+  setInterval(() => {
+    const secondsIdle = (Date.now() - lastAction) / 1000;
+    if(!isDead && secondsIdle > 12) {
+      const remarks = ["Watching you...", "Need code?", "I'm tiny.", "Coffee?", "Ready!"];
+      showBubble(remarks[Math.floor(Math.random()*remarks.length)], 3000);
+      markAction();
+    }
+  }, 5000);
+
+  input.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendMessage(); });
+  updateDisplay('idle');
+</script>
+
+</body>
+</html>
